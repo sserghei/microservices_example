@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  public_gateway:
+    image: node:18
+    container_name: public_gateway
+    working_dir: /app
+    volumes:
+      - ./public_gateway:/app
+    command: bash -c "npm install && node public_gateway.js"
+    ports:
+      - "${PUBLIC_GATEWAY_PORT}:8080"
+    env_file:
+      - ./.env
+
+  auth_service:
+    image: ruby:3.2
+    container_name: auth_service
+    working_dir: /app
+    volumes:
+      - ./auth_service:/app
+    command: bash -c "bundle install && ruby auth_server.rb"
+    expose:
+      - "${AUTH_SERVICE_PORT}"
+    env_file:
+      - ./.env
+
+  user_service:
+    image: python:3.10
+    container_name: user_service
+    working_dir: /app
+    volumes:
+      - ./user_service:/app
+    command: bash -c "pip install -r requirements.txt && python app.py"
+    expose:
+      - "${USER_SERVICE_PORT}"
+    env_file:
+      - ./.env
+
+  db:
+    image: postgres:14
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./user_service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    env_file:
+      - ./.env
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "${REDIS_PORT}:6379"
+    env_file:
+      - ./.env
+
+volumes:
+  postgres_data:
